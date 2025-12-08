@@ -1,5 +1,8 @@
 const Partners = require("../../../models/partners");
 const Form = require("../../../models/forms");
+const formSelect = require("../../../models/formSelect");
+const partnerLimit = require("../../../models/partnerLimit");
+const user = require("../../../models/user");
 
 exports.createPartner = async (req, res) => {
   try {
@@ -13,8 +16,8 @@ exports.createPartner = async (req, res) => {
       isActive,
       wishes,
       postalCodes,
-      leadTypes,
-      leads
+      // leadTypes,
+      leads,
     } = req.body;
     const existingPartner = await Partners.findOne({ email });
     if (existingPartner) {
@@ -23,6 +26,7 @@ exports.createPartner = async (req, res) => {
         message: "Partner with this email already exists",
       });
     }
+    const leadsType = await formSelect.find();
 
     const newPartner = new Partners({
       name,
@@ -34,11 +38,10 @@ exports.createPartner = async (req, res) => {
       isActive,
       wishes,
       leads,
-      leadTypes: leadTypes?.map((lt) => ({
-        typeId: lt.typeId,
-        name:lt.name,
+      leadTypes: leadsType.map((lt) => ({
+        typeId: lt._id,
         price: lt.price,
-      })) || [],
+      })),
 
       postalCodes: {
         exact: postalCodes?.exact?.map((c) => ({ code: c })) || [],
@@ -51,7 +54,11 @@ exports.createPartner = async (req, res) => {
     });
 
     await newPartner.save();
-    res.status(201).json({ success: true, data: newPartner , message: "Partner Added Successfully" });
+    res.status(201).json({
+      success: true,
+      data: newPartner,
+      message: "Partner Added Successfully",
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Server Error" });
@@ -85,8 +92,13 @@ exports.getPartners = async (req, res) => {
       query.name = { $regex: name, $options: "i" };
     }
     if (postalCode) {
-      query.postalCodes = { $regex: postalCode, $options: "i" };
+      query.$or = [
+        { "postalCodes.exact.code": { $regex: postalCode, $options: "i" } },
+        { "postalCodes.ranges.from": { $regex: postalCode, $options: "i" } },
+        { "postalCodes.ranges.to": { $regex: postalCode, $options: "i" } },
+      ];
     }
+
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: "i" } },
@@ -155,12 +167,12 @@ exports.updatePartner = async (req, res) => {
       wishes,
       postalCodes,
       leadTypes,
-      leads
+      leads,
     } = req.body;
-  if (email) {
+    if (email) {
       const existingPartner = await Partners.findOne({
         email,
-        _id: { $ne: id }, 
+        _id: { $ne: id },
       });
       if (existingPartner) {
         return res.status(400).json({
@@ -186,12 +198,12 @@ exports.updatePartner = async (req, res) => {
             to: r.to,
           })) || [],
       },
-        leadTypes: leadTypes?.map((lt) => ({
-        typeId: lt.typeId,
-        name: lt.name,
-        price: lt.price,
-      })) || [],
-      leads
+      leadTypes:
+        leadTypes?.map((lt) => ({
+          typeId: lt.typeId,
+          price: lt.price,
+        })) || [],
+      leads,
     };
 
     const updated = await Partners.findByIdAndUpdate(id, updateData, {
@@ -205,7 +217,11 @@ exports.updatePartner = async (req, res) => {
         .json({ success: false, message: "Partner not found" });
     }
 
-    res.json({ success: true, data: updated  , message: "Partner Updated Successfully"});
+    res.json({
+      success: true,
+      data: updated,
+      message: "Partner Updated Successfully",
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Error updating partner" });
@@ -258,5 +274,223 @@ exports.questionForPartner = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+exports.getAnwserOptionsForQuestion = async (req, res) => {
+  try {
+    const { question } = req.query;
+
+    if (!question) {
+      return res.status(400).json({
+        success: false,
+        message: "Question is required",
+      });
+    }
+
+    // ✅ Special case: leadType – fetch from formSelect
+    if (question === "leadType") {
+      const leadTypes = await formSelect.find();
+
+      const options = leadTypes.map((item) => item.formTitle);
+
+      return res.status(200).json({
+        success: true,
+        question: "leadType",
+        type: "select",
+        options,
+      });
+    }
+
+    // ✅ For all other questions → fetch from Form model
+    const form = await Form.findOne();
+    if (!form) {
+      return res.status(404).json({
+        success: false,
+        message: "Form not found",
+      });
+    }
+
+    // Find matching field
+    let foundField = null;
+
+    form.steps.forEach((step) => {
+      step.fields.forEach((field) => {
+        if (field.name === question) {
+          foundField = field;
+        }
+      });
+    });
+
+    if (!foundField) {
+      return res.status(404).json({
+        success: false,
+        message: "Question not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      question: foundField.name,
+      type: foundField.type,
+      options: foundField.options || [],
+    });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+exports.setPartnerLimit = async (req, res) => {
+  try {
+    const { limit } = req.body;
+
+    const updatedLimit = await partnerLimit.findOneAndUpdate(
+      {},
+      { limit },
+      { new: true, upsert: true }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Limit updated successfully",
+      data: updatedLimit,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while updating the limit",
+      error: error.message,
+    });
+  }
+};
+exports.getPartnerLimit = async (req, res) => {
+  try {
+    const limit = await partnerLimit.findOne();
+
+    if (!limit) {
+      return res.status(404).json({
+        success: false,
+        message: "Limit not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: limit,
+    });
+  } catch (error) {
+    console.error("Error fetching partner limit:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+exports.leadsOfPartner = async (req, res) => {
+  try {
+    const partnerId = req.query.id;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || "";
+    const status = req.query.status || "";
+
+    if (!partnerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Partner ID is required",
+      });
+    }
+
+    const partner = await Partners.findById(partnerId);
+    if (!partner) {
+      return res.status(404).json({
+        success: false,
+        message: "Partner not found",
+      });
+    }
+
+    const skip = (page - 1) * limit;
+
+    let filter = {
+      partnerIds: partnerId,
+    };
+
+    if (status) filter.status = status;
+
+    if (search) {
+      filter.$or = [
+        { "dynamicFields.name": { $regex: search, $options: "i" } },
+        { "dynamicFields.email": { $regex: search, $options: "i" } },
+        { "dynamicFields.phone": { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // ---------- COUNT ----------
+    const total = await user.countDocuments(filter);
+
+    // ---------- FETCH ----------
+    const leads = await user
+      .find(filter)
+      .populate("partnerIds", "name email phone ")
+      .skip(skip)
+      .limit(limit);
+
+    // ---------- FORMAT + PROFIT ----------
+    const formatted = leads.map((lead) => {
+      const leadObj = lead.toObject();
+      const partnerObj = lead.partnerIds?.[0] || null;
+
+      let computedProfit = 0;
+
+      if (partnerObj) {
+        const leadPreference = lead.dynamicFields?.preferranceType;
+
+        const preferenceWish = partnerObj.wishes?.find(
+          (w) => w.question === "preferranceType"
+        );
+
+        const isSupported =
+          preferenceWish &&
+          preferenceWish.expectedAnswer?.includes(leadPreference);
+
+        if (isSupported) {
+          if (partnerObj.leadTypes?.length) {
+            const highestPrice = Math.max(
+              ...partnerObj.leadTypes.map((lt) => lt.price || 0)
+            );
+            computedProfit = highestPrice;
+          }
+        }
+      }
+
+      return {
+        ...leadObj,
+        // partner: partnerObj,
+        profit: computedProfit,
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      leads: formatted,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching partner leads:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error while fetching partner-specific leads",
+    });
   }
 };
