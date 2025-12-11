@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const seoDataSchema = require("./seoSettings");
 const faqSchema = new mongoose.Schema(
   {
     question: {
@@ -17,11 +16,7 @@ const faqSchema = new mongoose.Schema(
       ref: "category",
     },
     position: { type: Number },
-    // seo: {
-    //   type: seoDataSchema,
-    //   default: () => ({}),
-    // },
-     metaTitle: { type: String, trim: true, default: "" },
+    metaTitle: { type: String, trim: true, default: "" },
     metaDescription: { type: String, trim: true, default: "" },
     metaKeywords: { type: String, trim: true, default: "" },
     metaImage: { type: String, trim: true, default: "" },

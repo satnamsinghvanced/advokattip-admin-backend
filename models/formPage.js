@@ -1,14 +1,8 @@
 const mongoose = require("mongoose");
-const seoDataSchema = require("./seoSettings");
-
 const formPage = new mongoose.Schema(
   {
     title: { type: String },
     description: { type: String },
-    // seo: {
-    //   type: seoDataSchema,
-    //   default: () => ({}),
-    // },
     multipleSelect :{type:Boolean,default:false},
     privacyText:{type:String,default:""},
     metaTitle: { type: String, trim: true, default: "" },

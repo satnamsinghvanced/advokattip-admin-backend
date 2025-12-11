@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 const slugify = require("slugify");
-const seoDataSchema = require("./seoSettings");
 const companySchema = new mongoose.Schema(
   {
     companyName: {

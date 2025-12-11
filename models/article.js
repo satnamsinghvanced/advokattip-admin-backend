@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const seoDataSchema = require("./seoSettings");
 const articleSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
@@ -27,10 +26,6 @@ const articleSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
-    // seo: {
-    //   type: seoDataSchema,
-    //   default: () => ({}),
-    // },
     metaTitle: { type: String, trim: true, default: "" },
     metaDescription: { type: String, trim: true, default: "" },
     metaKeywords: { type: String, trim: true, default: "" },

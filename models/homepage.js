@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const seoDataSchema = require("./seoSettings");
 const homePageSchema = new mongoose.Schema(
   {
     heroSection: {
@@ -61,10 +60,6 @@ const homePageSchema = new mongoose.Schema(
     faq: {
       title: { type: String },
     },
-    //   seo: {
-    //   type: seoDataSchema,
-    //   default: () => ({}),
-    // },
     seo: {
       metaTitle: { type: String, trim: true, default: "" },
       metaDescription: { type: String, trim: true, default: "" },
