@@ -6,7 +6,7 @@ const cors = require('cors');
  const routes = require("./src/api/routes") 
 const cron = require("./service/cronJob")
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 
@@ -28,7 +28,7 @@ mongoose
   .then(() => {
     console.log('✅ MongoDB connected');
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-    console.log('http://localhost:9090');
+    console.log('http://localhost:9000');
   })
   .catch((err) => {
     console.error('❌ MongoDB connection error:', err.message);
