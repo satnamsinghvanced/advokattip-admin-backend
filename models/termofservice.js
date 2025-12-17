@@ -1,9 +1,14 @@
 const mongoose = require("mongoose");
+const seoDataSchema = require("./seoSettings");
 const termOfServiceSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true },
     description: { type: String, required: true },
-    metaTitle: { type: String, trim: true, default: "" },
+    //   seo: {
+    //   type: seoDataSchema,
+    //   default: () => ({}),
+    // },
+     metaTitle: { type: String, trim: true, default: "" },
     metaDescription: { type: String, trim: true, default: "" },
     metaKeywords: { type: String, trim: true, default: "" },
     metaImage: { type: String, trim: true, default: "" },

@@ -1,38 +1,16 @@
 const mongoose = require("mongoose");
 
-const placeSchema = new mongoose.Schema(
-  {
-    name: { type: String, required: true },
-    countyId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "County",
-      required: true,
-    },
-    slug: { type: String, required: true },
-    excerpt: { type: String },
-    title: { type: String },
-    description: { type: String },
-    icon: { type: String },
-    isRecommended: { type: Boolean, default: false },
-    rank: { type: Number, default: 0 },
-    companies: [
-      {
-        companyId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "Company",
-          required: true,
-        },
-        rank: {
-          type: Number,
-          default: 0, // order inside this place
-        },
-        isRecommended: {
-          type: Boolean,
-          default: false,
-        },
-      },
-    ],
 
+// const breadcrumbSchema = new mongoose.Schema(
+//   {
+//     label: { type: String, trim: true },
+//     url: { type: String, trim: true },
+//   },
+//   { _id: false }
+// );
+
+const seoDataSchema = new mongoose.Schema(
+  {
     metaTitle: { type: String, trim: true, default: "" },
     metaDescription: { type: String, trim: true, default: "" },
     metaKeywords: { type: String, trim: true, default: "" },
@@ -58,7 +36,33 @@ const placeSchema = new mongoose.Schema(
       noimageindex: { type: Boolean, default: false },
       notranslate: { type: Boolean, default: false },
     },
+
+    // customHead: { type: String, default: "" },
+
+    // redirect: {
+    //   enabled: { type: Boolean, default: false },
+    //   from: { type: String, trim: true },
+    //   to: { type: String, trim: true },
+    //   type: { type: Number, enum: [301, 302], default: 301 },
+    // },
+
+    // breadcrumbs: [breadcrumbSchema],
+
+    // includeInSitemap: { type: Boolean, default: true },
+    // priority: { type: Number, default: 0.7, min: 0.0, max: 1.0 },
+    // changefreq: {
+    //   type: String,
+    //   enum: ["always", "hourly", "daily", "weekly", "monthly", "yearly", "never"],
+    //   default: "weekly",
+    // },
+
+    // isScheduled: { type: Boolean, default: false },
+    // scheduledPublishDate: { type: Date },
+
+    // isDeleted: { type: Boolean, default: false },
+    // isHidden: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  { _id: false } 
 );
-module.exports = mongoose.model("Places", placeSchema);
+
+module.exports = seoDataSchema;
