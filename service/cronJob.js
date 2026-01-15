@@ -3,8 +3,10 @@ const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 
-const BASE_URL = "http://localhost:9000";
-const FrontenURl = "https://meglertip.vercel.app";
+const BASE_URL = process.env.API_BASE_URL;
+const FRONTEND_URL = process.env.FRONTEND_URL;
+const SITEMAP_PATH = process.env.SITEMAP_PATH;
+
 async function generateSitemap() {
   try {
     const companyRes = await axios.get(`${BASE_URL}/api/sitemap/companies`);
@@ -182,7 +184,6 @@ cron.schedule("0 0 * * *", async () => {
 function fillTemplate(templateBody, lead) {
   let body = templateBody;
 
-  // Replace placeholders
   body = body.replace(
     /{{name}}/g,
     lead.dynamicFields?.[0]?.values?.name || "Lead"
@@ -190,7 +191,7 @@ function fillTemplate(templateBody, lead) {
   body = body.replace(/{{id}}/g, lead.uniqueId || "");
   body = body.replace(
     /{{buttonLink}}/g,
-    `https://docs.google.com/forms/d/e/1FAIpQLSfC7vn3ztpbPhhVwEAC0sa1Mo8O4sDaFYXb9vPpzRgp5Tsk_g/viewform `
+    `https://docs.google.com/forms/d/e/1FAIpQLSdihV2ayy__VPkK2qdilSKuueqNPWw8zOu-CF31LBtzb_M-0Q/viewform?usp=header`
   );
 
   return body;

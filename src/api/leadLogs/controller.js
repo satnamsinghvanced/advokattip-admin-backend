@@ -1,13 +1,10 @@
 const Lead = require("../../../models/user");
 const Partner = require("../../../models/partners");
 const formSelect = require("../../../models/formSelect");
-<<<<<<< HEAD
-=======
 const mongoose = require("mongoose");
 const { Parser } = require("json2csv");
 
 
->>>>>>> 8eb9c17df86b6ed856cfd09c35d079ced94f1b6f
 exports.getAllLeads = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -36,10 +33,6 @@ exports.getAllLeads = async (req, res) => {
         { "dynamicFields.values.phone": { $regex: search, $options: "i" } },
       ];
 
-<<<<<<< HEAD
-      // Add uniqueId filter if search is numeric
-=======
->>>>>>> 8eb9c17df86b6ed856cfd09c35d079ced94f1b6f
       if (!isNaN(search)) {
         orFilters.push({ uniqueId: Number(search) });
       }
@@ -50,37 +43,21 @@ exports.getAllLeads = async (req, res) => {
     // Count total documents
     const total = await Lead.countDocuments(filter);
 
-<<<<<<< HEAD
-    // Fetch leads with partners populated
-    let leads = await Lead.find(filter)
-      .populate("partnerIds", "name email phone wishes leadTypes")
-=======
     let leads = await Lead.find(filter)
       .populate("partnerIds.partnerId", "name email phone")
->>>>>>> 8eb9c17df86b6ed856cfd09c35d079ced94f1b6f
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });
 
-<<<<<<< HEAD
-    // Filter partnerIds inside each lead (without removing lead)
-=======
     // Optional: partner search inside populated data
->>>>>>> 8eb9c17df86b6ed856cfd09c35d079ced94f1b6f
     if (search) {
       const lowerSearch = search.toLowerCase();
       leads = leads.map((lead) => ({
         ...lead.toObject(),
         partnerIds: lead.partnerIds.filter(
-<<<<<<< HEAD
-          (p) =>
-            p.name?.toLowerCase().includes(lowerSearch) ||
-            p.email?.toLowerCase().includes(lowerSearch)
-=======
           ({ partnerId }) =>
             partnerId?.name?.toLowerCase().includes(lowerSearch) ||
             partnerId?.email?.toLowerCase().includes(lowerSearch)
->>>>>>> 8eb9c17df86b6ed856cfd09c35d079ced94f1b6f
         ),
       }));
     }
@@ -104,8 +81,6 @@ exports.getAllLeads = async (req, res) => {
   }
 };
 
-<<<<<<< HEAD
-=======
 exports.exportLeadsCSV = async (req, res) => {
   try {
     const leads = await Lead.find({})
@@ -259,7 +234,6 @@ exports.getLeadByPartnerName = async (req, res) => {
     });
   }
 };
->>>>>>> 8eb9c17df86b6ed856cfd09c35d079ced94f1b6f
 
 exports.updateLeadStatus = async (req, res) => {
   try {
