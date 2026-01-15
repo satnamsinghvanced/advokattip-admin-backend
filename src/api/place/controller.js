@@ -1,9 +1,20 @@
 const Place = require("../../../models/places");
+const slugSanitizer = require("../../helper/slugSanitizer");
 
+function stripHtml(html = "") {
+  return html
+    .replace(/<\/p>\s*<p>/gi, "\n\n")
+    .replace(/<\/?p>/gi, "")
+    .replace(/<\/?h2>/gi, "")
+    .replace(/<\/?h3>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/?[^>]+>/gi, "")
+    .trim();
+}
 
 exports.create = async (req, res) => {
   try {
-    const {
+    let {
       name,
       countyId,
       slug,
@@ -26,34 +37,45 @@ exports.create = async (req, res) => {
         message: "All fields are required.",
       });
     }
-
+    if (!slug || slug.trim() === "") {
+      slug = slugSanitizer(name);
+    } else {
+      slug = slugSanitizer(slug);
+    }
     // Check duplicate
     const existingCity = await Place.findOne({
-      $or: [{ title: title.trim() }, { slug: slug.trim() }, { name: name.trim() }],
+      $or: [
+        { title: title.trim() },
+        { slug: slug.trim() },
+        { name: name.trim() },
+      ],
     });
 
     if (existingCity) {
-      return res.status(400).json({ success: false, message: "City already exists." });
+      return res
+        .status(400)
+        .json({ success: false, message: "City already exists." });
     }
 
     // Parse companies and robots if sent as JSON strings
     let parsedCompanies = [];
     if (companies) {
-      parsedCompanies = typeof companies === "string" ? JSON.parse(companies) : companies;
+      parsedCompanies =
+        typeof companies === "string" ? JSON.parse(companies) : companies;
     }
 
     let parsedRobots = {};
     if (robots) {
       parsedRobots = typeof robots === "string" ? JSON.parse(robots) : robots;
     }
-
+    const cleanDescription = stripHtml(description);
     const newCity = await Place.create({
       name: name.trim(),
       countyId,
       slug: slug.trim(),
       excerpt: excerpt.trim(),
       title: title.trim(),
-      description: description.trim(),
+      description: cleanDescription,
       icon: iconPath,
       rank: rank ? parseInt(rank) : 0,
       companies: parsedCompanies,
@@ -87,15 +109,15 @@ exports.getCities = async (req, res) => {
       ];
     }
 
-    const sortField = sortBy || "name";
-    const sortDirection = sortOrder === "asc" ? 1 : -1;
+    // const sortField = sortBy || "name";
+    // const sortDirection = sortOrder === "asc" ? 1 : -1;
 
     const total = await Place.countDocuments(filter);
 
     const counties = await Place.find(filter)
       .skip(skip)
       .limit(limit)
-      .sort({ [sortField]: sortDirection });
+      .sort({ createdAt :-1});
 
     res.status(200).json({
       success: true,
@@ -134,7 +156,7 @@ exports.getCityById = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const {
+    let {
       name,
       countyId,
       slug,
@@ -146,7 +168,11 @@ exports.update = async (req, res) => {
       robots,
       ...restOfData
     } = req.body;
-
+    if (!slug || slug.trim() === "") {
+      slug = slugSanitizer(name);
+    } else {
+      slug = slugSanitizer(slug);
+    }
     const updatedFields = {
       ...(name && { name }),
       ...(countyId && { countyId }),
@@ -161,14 +187,18 @@ exports.update = async (req, res) => {
     // Handle icon update
     const iconFile = req.file || req.files?.icon?.[0];
     if (iconFile) updatedFields.icon = `uploads/${iconFile.filename}`;
-
+    if (description) {
+      updatedFields.description = stripHtml(description);
+    }
     // Parse companies and robots if sent as JSON strings
     if (companies) {
-      updatedFields.companies = typeof companies === "string" ? JSON.parse(companies) : companies;
+      updatedFields.companies =
+        typeof companies === "string" ? JSON.parse(companies) : companies;
     }
 
     if (robots) {
-      updatedFields.robots = typeof robots === "string" ? JSON.parse(robots) : robots;
+      updatedFields.robots =
+        typeof robots === "string" ? JSON.parse(robots) : robots;
     }
 
     const updatedCity = await Place.findByIdAndUpdate(id, updatedFields, {
@@ -177,7 +207,9 @@ exports.update = async (req, res) => {
     });
 
     if (!updatedCity) {
-      return res.status(404).json({ success: false, message: "City not found." });
+      return res
+        .status(404)
+        .json({ success: false, message: "City not found." });
     }
 
     res.status(200).json({

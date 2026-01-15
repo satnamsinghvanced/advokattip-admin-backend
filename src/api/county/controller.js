@@ -1,39 +1,70 @@
 const County = require("../../../models/county");
+const slugSanitizer = require("../../helper/slugSanitizer");
 
 exports.createCounty = async (req, res) => {
   try {
-    const { name, slug, excerpt,  ...restOfData} = req.body;
-    if (!name || !slug) {
-      return res.status(400).json({ message: "All fields are required." });
+    let { name, slug, excerpt, companies, ...restOfData } = req.body;
+
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: "Name is required."
+      });
     }
 
+    // Slug handling
+    if (!slug || slug.trim() === "") {
+      slug = slugSanitizer(name);
+    } else {
+      slug = slugSanitizer(slug);
+    }
+ let parsedCompanies = [];
+    if (companies) {
+      parsedCompanies =
+        typeof companies === "string" ? JSON.parse(companies) : companies;
+    }
+
+    // Check duplicate county (by name or slug only)
     const existing = await County.findOne({
-      $or: [{ name: name.trim() }, { slug: slug.trim() ,   ...restOfData}],
+      $or: [
+        { name: name.trim() },
+        { slug: slug.trim() }
+      ]
     });
 
     if (existing) {
-      return res
-        .status(400)
-        .json({ message: "County with that name or slug already exists." });
+      return res.status(400).json({
+        success: false,
+        message: "County with this name or slug already exists."
+      });
     }
+
+    // File upload
     const imagePath = req.file ? `/uploads/${req.file.filename}` : null;
+
     const county = await County.create({
       name: name.trim(),
       slug: slug.trim(),
-      excerpt: excerpt.trim(),
+      excerpt: excerpt ? excerpt.trim() : "",
       icon: imagePath,
-       ...restOfData
+      companies: parsedCompanies,
+      ...restOfData
     });
 
     res.status(201).json({
       success: true,
       message: "County created successfully.",
-      data: county,
+      data: county
     });
+
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({
+      success: false,
+      message: err.message
+    });
   }
 };
+
 
 exports.getCounties = async (req, res) => {
   try {
@@ -107,24 +138,51 @@ exports.getCountyById = async (req, res) => {
 
 exports.updateCounty = async (req, res) => {
   try {
-    const { name, slug, excerpt, icon , ...restOfData} = req.body;
-    const imagePath = req.file ? `/uploads/${req.file.filename}` : null;
+    let { name, slug, excerpt, icon, companies, ...restOfData } = req.body;
+
+    const imagePath = req.file ? `/uploads/${req.file.filename}` : icon;
+
+    let parsedCompanies = companies;
+
+    // ✅ Parse companies if it comes as string
+    if (typeof companies === "string") {
+      parsedCompanies = JSON.parse(companies);
+    }
+    if (!slug || slug.trim() === "") {
+      slug = slugSanitizer(name);
+    } else {
+      slug = slugSanitizer(slug);
+    }
     const county = await County.findByIdAndUpdate(
       req.params.id,
-      { name, slug, excerpt, icon: imagePath , ...restOfData},
+      {
+        name,
+        slug,
+        excerpt,
+        icon: imagePath,
+        companies: parsedCompanies, // ✅ now correct type
+        ...restOfData,
+      },
       { new: true, runValidators: true }
     );
 
-    if (!county) return res.status(404).json({ message: "County not found" });
+    if (!county) {
+      return res
+        .status(404)
+        .json({ success: false, message: "County not found" });
+    }
+
     res.status(200).json({
       success: true,
       message: "County updated successfully.",
       data: county,
     });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 exports.deleteCounty = async (req, res) => {
   try {
     const county = await County.findByIdAndDelete(req.params.id);

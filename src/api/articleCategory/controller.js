@@ -1,14 +1,28 @@
+const article = require("../../../models/article");
 const ArticleCategory = require("../../../models/articleCategory");
+const slugSanitizer = require("../../helper/slugSanitizer");
 
 exports.createArticleCategory = async (req, res) => {
   try {
-    const { title, slug, description, categoryPosition , ...restOfData} = req.body;
+    let { title, slug, description, categoryPosition, ...restOfData } =
+      req.body;
 
+    if (!slug || slug.trim() === "") {
+      slug = slugSanitizer(title);
+    } else {
+      slug = slugSanitizer(slug);
+    }
     const existing = await ArticleCategory.findOne({ slug });
     if (existing) {
       return res
         .status(400)
         .json({ success: false, message: "Slug already exists" });
+    }
+    if (categoryPosition !== undefined && categoryPosition !== null) {
+      await ArticleCategory.updateMany(
+        { categoryPosition: { $gte: categoryPosition } },
+        { $inc: { categoryPosition: 1 } }
+      );
     }
 
     const newCategory = new ArticleCategory({
@@ -16,7 +30,7 @@ exports.createArticleCategory = async (req, res) => {
       slug,
       description,
       categoryPosition,
-      ...restOfData
+      ...restOfData,
     });
 
     await newCategory.save();
@@ -68,7 +82,7 @@ exports.getArticleCategory = async (req, res) => {
 };
 exports.getCategoriesAll = async (req, res) => {
   try {
-    const categories = await ArticleCategory.find().select("title slug")
+    const categories = await ArticleCategory.find().select("title slug");
 
     res.status(200).json({
       success: true,
@@ -93,7 +107,7 @@ exports.getSingleArticleCategory = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message:"Article category data fetched successfully.",
+      message: "Article category data fetched successfully.",
       data: category,
     });
   } catch (error) {
@@ -102,20 +116,61 @@ exports.getSingleArticleCategory = async (req, res) => {
 };
 
 exports.updateArticleCategory = async (req, res) => {
-  try {
-    const { title, slug, description,  categoryPosition, ...restOfData} = req.body;
+  const session = await ArticleCategory.startSession();
+  session.startTransaction();
 
-    const updatedCategory = await ArticleCategory.findByIdAndUpdate(
-      req.params.id,
-      { title, slug, description, categoryPosition, ...restOfData},
-      { new: true, runValidators: true }
+  try {
+    let { title, slug, description, categoryPosition, ...restOfData } =
+      req.body;
+    if (!slug || slug.trim() === "") {
+      slug = slugSanitizer(title);
+    } else {
+      slug = slugSanitizer(slug);
+    }
+    const categoryId = req.params.id;
+
+    // Find current category
+    const currentCategory = await ArticleCategory.findById(categoryId).session(
+      session
     );
 
-    if (!updatedCategory) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Category not found" });
+    if (!currentCategory) {
+      await session.abortTransaction();
+      return res.status(404).json({
+        success: false,
+        message: "Category not found",
+      });
     }
+
+    // If categoryPosition is changing
+    if (
+      categoryPosition !== undefined &&
+      categoryPosition !== currentCategory.categoryPosition
+    ) {
+      // Find category with same position
+      const existingCategory = await ArticleCategory.findOne({
+        categoryPosition,
+        _id: { $ne: categoryId },
+      }).session(session);
+
+      // Swap positions if exists
+      if (existingCategory) {
+        await ArticleCategory.findByIdAndUpdate(
+          existingCategory._id,
+          { categoryPosition: currentCategory.categoryPosition },
+          { session }
+        );
+      }
+    }
+
+    // Update current category
+    const updatedCategory = await ArticleCategory.findByIdAndUpdate(
+      categoryId,
+      { title, slug, description, categoryPosition, ...restOfData },
+      { new: true, runValidators: true, session }
+    );
+
+    await session.commitTransaction();
 
     res.status(200).json({
       success: true,
@@ -123,7 +178,13 @@ exports.updateArticleCategory = async (req, res) => {
       data: updatedCategory,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    await session.abortTransaction();
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  } finally {
+    session.endSession();
   }
 };
 
@@ -136,7 +197,7 @@ exports.deleteArticleCategory = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Category not found" });
     }
-
+    await article.deleteMany({ categoryId: deleted._id });
     res.status(200).json({
       success: true,
       message: "Article category deleted successfully",
