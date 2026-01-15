@@ -86,101 +86,219 @@ cron.schedule("0 1 * * *", () => {
 // Run once on startup
 generateSitemap();
 
-cron.schedule("0 0 * * *", async () => {
-  console.log("Cron job started at:", new Date().toISOString());
+// cron.schedule("0 0 * * *", async () => {
+//   console.log("Cron job started at:", new Date().toISOString());
 
-  try {
-    const threeWeeksAgoStart = new Date();
-    threeWeeksAgoStart.setDate(threeWeeksAgoStart.getDate() - 21);
-    threeWeeksAgoStart.setHours(0, 0, 0, 0);
+//   try {
+//     const threeWeeksAgoStart = new Date();
+//     threeWeeksAgoStart.setDate(threeWeeksAgoStart.getDate() - 21);
+//     threeWeeksAgoStart.setHours(0, 0, 0, 0);
 
-    const threeWeeksAgoEnd = new Date();
-    threeWeeksAgoEnd.setDate(threeWeeksAgoEnd.getDate() - 21);
-    threeWeeksAgoEnd.setHours(23, 59, 59, 999);
+//     const threeWeeksAgoEnd = new Date();
+//     threeWeeksAgoEnd.setDate(threeWeeksAgoEnd.getDate() - 21);
+//     threeWeeksAgoEnd.setHours(23, 59, 59, 999);
 
-    const yesterday = new Date();
-    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+//     const yesterday = new Date();
+//     yesterday.setUTCDate(yesterday.getUTCDate() - 1);
 
-    const lastDayStart = new Date(
-      Date.UTC(
-        yesterday.getUTCFullYear(),
-        yesterday.getUTCMonth(),
-        yesterday.getUTCDate(),
-        0,
-        0,
-        0,
-        0
-      )
-    );
+//     const lastDayStart = new Date(
+//       Date.UTC(
+//         yesterday.getUTCFullYear(),
+//         yesterday.getUTCMonth(),
+//         yesterday.getUTCDate(),
+//         0,
+//         0,
+//         0,
+//         0
+//       )
+//     );
 
-    const lastDayEnd = new Date(
-      Date.UTC(
-        yesterday.getUTCFullYear(),
-        yesterday.getUTCMonth(),
-        yesterday.getUTCDate(),
-        23,
-        59,
-        59,
-        999
-      )
-    );
+//     const lastDayEnd = new Date(
+//       Date.UTC(
+//         yesterday.getUTCFullYear(),
+//         yesterday.getUTCMonth(),
+//         yesterday.getUTCDate(),
+//         23,
+//         59,
+//         59,
+//         999
+//       )
+//     );
 
-    console.log(
-      "Fetching leads created yesterday:",
-      lastDayStart,
-      "-",
-      lastDayEnd
-    );
-    const leads = await user.find({
-      createdAt: { $gte: lastDayStart, $lte: lastDayEnd },
-      status: "Complete",
-    });
-    console.log(`Found ${leads.length} lead(s)`);
+//     console.log(
+//       "Fetching leads created yesterday:",
+//       lastDayStart,
+//       "-",
+//       lastDayEnd
+//     );
+//     const leads = await user.find({
+//       createdAt: { $gte: lastDayStart, $lte: lastDayEnd },
+//       status: "Complete",
+//     });
+//     console.log(`Found ${leads.length} lead(s)`);
 
-    if (leads.length === 0)
-      return console.log("No leads to send email to today.");
+//     if (leads.length === 0)
+//       return console.log("No leads to send email to today.");
 
-    console.log("Fetching active SMTP configuration...");
-    const smtpConfig = await SmtpConfig.findOne();
-    if (!smtpConfig) throw new Error("No active SMTP configuration found");
-    console.log("SMTP configuration found:", smtpConfig.host);
+//     console.log("Fetching active SMTP configuration...");
+//     const smtpConfig = await SmtpConfig.findOne();
+//     if (!smtpConfig) throw new Error("No active SMTP configuration found");
+//     console.log("SMTP configuration found:", smtpConfig.host);
 
-    const transporter = nodemailer.createTransport({
-      host: smtpConfig.host,
-      port: smtpConfig.port,
-      secure: smtpConfig.secure,
-      auth: {
-        user: smtpConfig.user,
-        pass: smtpConfig.pass,
-      },
-    });
+//     const transporter = nodemailer.createTransport({
+//       host: smtpConfig.host,
+//       port: smtpConfig.port,
+//       secure: smtpConfig.secure,
+//       auth: {
+//         user: smtpConfig.user,
+//         pass: smtpConfig.pass,
+//       },
+//     });
 
-    console.log("Fetching active email template...");
-    const template = await emailTemplates.findOne({
-      name: "Response from lead after 3 weeks",
-    });
-    if (!template) throw new Error("No active email template found");
-    console.log("Email template found:", template.name);
+//     console.log("Fetching active email template...");
+//     const template = await emailTemplates.findOne({
+//       name: "Response from lead after 3 weeks",
+//     });
+//     if (!template) throw new Error("No active email template found");
+//     console.log("Email template found:", template.name);
 
-    for (const lead of leads) {
-      const emailBody = fillTemplate(template.body, lead);
-      console.log("Sending email to:", lead.dynamicFields[0].values.email);
-      await transporter.sendMail({
-        from: smtpConfig.fromEmail,
-        to: lead.dynamicFields[0].values.email,
-        subject: template.subject,
-        html: emailBody,
-      });
-      console.log(
-        `Email successfully sent to ${lead.dynamicFields[0].values.email}`
+//     for (const lead of leads) {
+//       const emailBody = fillTemplate(template.body, lead);
+//       console.log("Sending email to:", lead.dynamicFields[0].values.email);
+//       await transporter.sendMail({
+//         from: smtpConfig.fromEmail,
+//         to: lead.dynamicFields[0].values.email,
+//         subject: template.subject,
+//         html: emailBody,
+//       });
+//       console.log(
+//         `Email successfully sent to ${lead.dynamicFields[0].values.email}`
+//       );
+//     }
+
+//     console.log("Cron job finished successfully at:", new Date().toISOString());
+//   } catch (err) {
+//     console.error("Error in cron job:", err);
+//   }
+// });
+
+
+
+import cron from "node-cron";
+import nodemailer from "nodemailer";
+import user from "./models/user.js";
+import SmtpConfig from "./models/SmtpConfig.js";
+import emailTemplates from "./models/emailTemplates.js";
+import { fillTemplate } from "./utils/fillTemplate.js";
+
+cron.schedule(
+  "40 16 * * *", // ⏰ 4:40 PM
+  async () => {
+    console.log("Cron job started at:", new Date().toISOString());
+
+    try {
+      const threeWeeksAgoStart = new Date();
+      threeWeeksAgoStart.setDate(threeWeeksAgoStart.getDate() - 21);
+      threeWeeksAgoStart.setHours(0, 0, 0, 0);
+
+      const threeWeeksAgoEnd = new Date();
+      threeWeeksAgoEnd.setDate(threeWeeksAgoEnd.getDate() - 21);
+      threeWeeksAgoEnd.setHours(23, 59, 59, 999);
+
+      const yesterday = new Date();
+      yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+
+      const lastDayStart = new Date(
+        Date.UTC(
+          yesterday.getUTCFullYear(),
+          yesterday.getUTCMonth(),
+          yesterday.getUTCDate(),
+          0,
+          0,
+          0,
+          0
+        )
       );
-    }
 
-    console.log("Cron job finished successfully at:", new Date().toISOString());
-  } catch (err) {
-    console.error("Error in cron job:", err);
+      const lastDayEnd = new Date(
+        Date.UTC(
+          yesterday.getUTCFullYear(),
+          yesterday.getUTCMonth(),
+          yesterday.getUTCDate(),
+          23,
+          59,
+          59,
+          999
+        )
+      );
+
+      console.log(
+        "Fetching leads created yesterday:",
+        lastDayStart,
+        "-",
+        lastDayEnd
+      );
+
+      const leads = await user.find({
+        createdAt: { $gte: lastDayStart, $lte: lastDayEnd },
+        status: "Complete",
+      });
+
+      console.log(`Found ${leads.length} lead(s)`);
+
+      if (leads.length === 0) {
+        console.log("No leads to send email to today.");
+        return;
+      }
+
+      console.log("Fetching SMTP configuration...");
+      const smtpConfig = await SmtpConfig.findOne();
+      if (!smtpConfig) throw new Error("No active SMTP configuration found");
+
+      const transporter = nodemailer.createTransport({
+        host: smtpConfig.host,
+        port: smtpConfig.port,
+        secure: smtpConfig.secure,
+        auth: {
+          user: smtpConfig.user,
+          pass: smtpConfig.pass,
+        },
+      });
+
+      console.log("Fetching email template...");
+      const template = await emailTemplates.findOne({
+        name: "Response from lead after 3 weeks",
+      });
+      if (!template) throw new Error("No active email template found");
+
+      for (const lead of leads) {
+        const emailBody = fillTemplate(template.body, lead);
+        const email = lead?.dynamicFields?.[0]?.values?.email;
+
+        if (!email) continue;
+
+        console.log("Sending email to:", email);
+
+        await transporter.sendMail({
+          from: smtpConfig.fromEmail,
+          to: email,
+          subject: template.subject,
+          html: emailBody,
+        });
+
+        console.log(`Email successfully sent to ${email}`);
+      }
+
+      console.log("Cron job finished at:", new Date().toISOString());
+    } catch (err) {
+      console.error("Error in cron job:", err);
+    }
+  },
+  {
+    timezone: "Asia/Kolkata", // 🇮🇳 IST
   }
-});
+);
+
 function fillTemplate(templateBody, lead) {
   let body = templateBody;
 
