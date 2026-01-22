@@ -166,6 +166,7 @@ exports.update = async (req, res) => {
       rank,
       companies,
       robots,
+      icon,
       ...restOfData
     } = req.body;
     if (!slug || slug.trim() === "") {
