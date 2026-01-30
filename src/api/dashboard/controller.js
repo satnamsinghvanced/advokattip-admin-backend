@@ -172,7 +172,6 @@ exports.getDashboardStats = async (req, res) => {
       }),
       totalRejects: await User.countDocuments({
         // ✅ Count of rejected leads
-        createdAt: { $gte: startDate, $lte: endDate },
         status: "Reject",
       }),
       totalPending: await User.countDocuments({
